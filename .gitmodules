@@ -1,0 +1,3 @@
+[submodule "commands/youtube-transcript-crawler"]
+	path = commands/youtube-transcript-crawler
+	url = git@github.com:nixonyung/youtube-transcript-crawler.git

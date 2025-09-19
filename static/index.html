@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="cupcake">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+
+    <script src="/lib/tailwindcss@4.1.13.js"></script>
+    <script src="/lib/alpinejs@3.15.0.js" defer></script>
+    <script src="/lib/incremental-dom@0.6.0.js"></script>
+    <script src="/lib/markdown-it@8.4.2.js"></script>
+    <script src="/lib/markdown-it-incremental-dom@2.js"></script>
+
+    <style type="text/tailwindcss">
+      @font-face {
+        font-family: "0xProto Nerd Font";
+        src: local("0xProto Nerd Font") url("/fonts/0xProtoNerdFont-Regular.ttf") format("truetype");
+        font-weight: normal;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: "0xProto Nerd Font";
+        src: local("0xProto Nerd Font Bold") url("/fonts/0xProtoNerdFont-Bold.ttf")
+          format("truetype");
+        font-weight: bold;
+        font-style: normal;
+      }
+      @font-face {
+        font-family: "0xProto Nerd Font";
+        src: local("0xProto Nerd Font Italic") url("/fonts/0xProtoNerdFont-Italic.ttf")
+          format("truetype");
+        font-weight: normal;
+        font-style: italic;
+      }
+
+      @theme {
+        --font-0xProto: "0xProto Nerd Font";
+      }
+
+      .my-response strong {
+        @apply underline;
+      }
+    </style>
+
+    <script>
+      var markdownit = markdownit().use(markdownitIncrementalDOM);
+      var textDecoder = new TextDecoder("utf-8");
+    </script>
+  </head>
+  <body class="min-h-dvh p-3 flex flex-col gap-3 bg-black text-white">
+    <template
+      x-data="{
+        list: [
+          { name: 'test_json', args: [ 'python3', './commands/test_json.py' ], json: true },
+          { name: 'test_stream', args: [ 'python3', './commands/test_stream.py' ], stream: true },
+          { name: 'youtube-transcript-crawler', args: [ 'python3', './commands/youtube-transcript-crawler/main.py' ], stream: true, markdown: true },
+        ]
+      }"
+      x-for="{ name, args, json, stream, markdown } in list"
+      :key="name"
+    >
+      <div x-data="{ input: '' }">
+        <div class="flex gap-3">
+          <button
+            x-text="name"
+            class="px-2 py-1 bg-blue-400 cursor-pointer"
+            @click="
+              const res = await fetch('/', {
+                method: 'POST',
+                body: JSON.stringify({
+                  args: [...args, ...input.split(' ').filter(s => s)],
+                  stream,
+                  json,
+                }),
+              })
+
+              function updateFn(response) {
+                if (markdown) {
+                  IncrementalDOM.patch(
+                    $refs.response,
+                    markdownit.renderToIncrementalDOM(response)
+                  );
+                } else {
+                  $refs.response.textContent = response;
+                }
+              }
+
+              if (stream) {
+                response = '';
+                for await (const chunk of await res.body) {
+                  response += textDecoder.decode(chunk);
+                  updateFn(response);
+                }
+              } else {
+                updateFn(await res.text());
+              }
+            "
+          ></button>
+          <input
+            x-model="input"
+            type="text"
+            class="field-sizing-content min-w-60 p-1 border-1 border-blue-200"
+          />
+        </div>
+        <div
+          x-ref="response"
+          class="my-response whitespace-pre-line"
+          :class="{ 'font-0xProto': !markdown }"
+        ></div>
+      </div>
+    </template>
+  </body>
+</html>
